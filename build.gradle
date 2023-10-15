@@ -1,0 +1,92 @@
+//buildscript {
+//    repositories {
+//        mavenCentral()
+//    }
+//}
+//plugins {
+//  id 'java'
+//  id 'com.github.johnrengelman.shadow' version '8.1.1'
+//}
+//apply plugin: 'com.github.johnrengelman.shadow'
+//apply plugin: 'java'
+//repositories {
+//    mavenCentral()
+//    maven {
+//        url "https://packages.confluent.io/maven"
+//    }
+//}
+//dependencies {
+//    implementation "io.confluent.ksql:ksqldb-udf:7.4.0"
+//    implementation "org.apache.kafka:kafka_2.13:3.5.1"
+//    implementation "org.apache.kafka:connect-api:3.5.1"
+//
+//    implementation group: 'org.xerial', name: 'sqlite-jdbc', version: '3.43.0.0'
+//    testImplementation(platform('org.junit:junit-bom:5.10.0'))
+//    testImplementation('org.junit.jupiter:junit-jupiter')
+//}
+//test {
+//    useJUnitPlatform()
+//    testLogging {
+//        events "passed", "skipped", "failed"
+//    }
+//}
+//compileJava {
+//    options.compilerArgs << "-parameters"
+//    sourceCompatibility = JavaVersion.VERSION_11
+//}
+//shadowJar {
+//    archiveBaseName = "acdp-ksql-udfs"
+//    archiveClassifier = ""
+//    destinationDirectory = file("extensions")
+//}
+//
+//version = "0.0.1"
+
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+}
+
+plugins {
+    id "java"
+}
+
+// Use Java 11 since CP Docker images package Java 11 as of CP 7.3.x
+sourceCompatibility = JavaVersion.VERSION_11
+targetCompatibility = JavaVersion.VERSION_11
+compileJava.options.compilerArgs << "-parameters"
+version = "0.0.1"
+
+repositories {
+    mavenCentral()
+
+
+    maven {
+        url "https://packages.confluent.io/maven"
+    }
+}
+
+dependencies {
+    implementation 'io.confluent.ksql:ksqldb-udf:7.4.0'
+    implementation 'org.apache.kafka:kafka_2.13:3.5.1'
+    implementation group: 'org.xerial', name: 'sqlite-jdbc', version: '3.43.0.0'
+    testImplementation(platform('org.junit:junit-bom:5.10.0'))
+    testImplementation('org.junit.jupiter:junit-jupiter')
+}
+
+task copyJar(type: Copy) {
+    from jar
+    into "extensions/"
+}
+
+build.dependsOn copyJar
+
+test {
+    useJUnitPlatform()
+    testLogging {
+        outputs.upToDateWhen { false }
+        showStandardStreams = true
+        exceptionFormat = "full"
+    }
+}
