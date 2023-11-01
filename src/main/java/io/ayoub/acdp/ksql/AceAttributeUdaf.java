@@ -1,5 +1,7 @@
 package io.ayoub.acdp.ksql;
 
+import io.ayoub.acdp.model.AttributeType;
+import io.ayoub.acdp.model.AttributeTypeValue;
 import io.confluent.ksql.function.udaf.Udaf;
 import io.confluent.ksql.function.udaf.UdafDescription;
 import io.confluent.ksql.function.udaf.UdafFactory;
@@ -7,8 +9,9 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 
+import java.util.HashMap;
 import java.util.List;
-import java.util.Optional;
+import java.util.Map;
 
 @UdafDescription(
         name = "ace_attribute_collect",
@@ -18,80 +21,95 @@ import java.util.Optional;
                 "single array of attributes sorted by type."
 )
 public class AceAttributeUdaf {
-    public static final Schema PARAM_SCHEMA = SchemaBuilder
+    public static final Schema ATTRIBUTE_PARAM_SCHEMA = SchemaBuilder
             .struct().optional()
-            .field("ATTRIBUTE_TYPE", Schema.OPTIONAL_INT32_SCHEMA)
-            .field("ATTRIBUTE_NAME", Schema.OPTIONAL_STRING_SCHEMA)
-            .field("ATTRIBUTE_VALUE", Schema.OPTIONAL_INT64_SCHEMA)
+            .field("PROPERTY_TYPE", Schema.OPTIONAL_INT32_SCHEMA)
+            .field("PROPERTY_NAME", Schema.OPTIONAL_STRING_SCHEMA)
+            .field("INITIAL_LEVEL", Schema.OPTIONAL_INT64_SCHEMA)
+            .field("NUM_TIMES_INCREASED", Schema.OPTIONAL_INT64_SCHEMA)
+            .field("XP_SPENT", Schema.OPTIONAL_INT64_SCHEMA)
+            .field("CURRENT_LEVEL", Schema.OPTIONAL_INT64_SCHEMA)
             .build();
 
-    public static final String PARAM_SCHEMA_DESCRIPTOR =
-            "STRUCT<" +
-                    "ATTRIBUTE_TYPE INTEGER, " +
-                    "ATTRIBUTE_NAME VARCHAR(STRING), " +
-                    "ATTRIBUTE_VALUE BIGINT" +
-                    ">";
+    public static final String ATTRIBUTE_PARAM_SCHEMA_DESCRIPTOR =
+            "STRUCT<PROPERTY_TYPE INTEGER, " +
+                    "PROPERTY_NAME VARCHAR(STRING), " +
+                    "INITIAL_LEVEL BIGINT, " +
+                    "NUM_TIMES_INCREASED BIGINT, " +
+                    "XP_SPENT BIGINT, " +
+                    "CURRENT_LEVEL BIGINT>";
 
-    public static final Schema AGGREGATE_SCHEMA = SchemaBuilder
-            .struct().optional()
-            .field("STRENGTH", Schema.OPTIONAL_INT64_SCHEMA)
-            .field("ENDURANCE", Schema.OPTIONAL_INT64_SCHEMA)
-            .field("QUICKNESS", Schema.OPTIONAL_INT64_SCHEMA)
-            .field("COORDINATION", Schema.OPTIONAL_INT64_SCHEMA)
-            .field("FOCUS", Schema.OPTIONAL_INT64_SCHEMA)
-            .field("SELF", Schema.OPTIONAL_INT64_SCHEMA)
-            .build();
+
+    public static final Schema RETURN_INNER_SCHEMA = ATTRIBUTE_PARAM_SCHEMA;
+    public static final String RETURN_SCHEMA_DESCRIPTOR =
+            "ARRAY<" + ATTRIBUTE_PARAM_SCHEMA_DESCRIPTOR + ">";
+
+
+    public static final Schema AGGREGATE_SCHEMA = SchemaBuilder.map(
+            Schema.STRING_SCHEMA,
+            ATTRIBUTE_PARAM_SCHEMA
+    );
 
     public static final String AGGREGATE_SCHEMA_DESCRIPTOR =
-            "STRUCT<" +
-                    "STRENGTH BIGINT, " +
-                    "ENDURANCE BIGINT, " +
-                    "QUICKNESS BIGINT, " +
-                    "COORDINATION BIGINT, " +
-                    "FOCUS BIGINT, " +
-                    "SELF BIGINT" +
-                    ">";
+            "MAP<STRING, " + ATTRIBUTE_PARAM_SCHEMA_DESCRIPTOR + ">";
 
     @UdafFactory(
             description = "Collect the latest attribute values",
-            paramSchema = PARAM_SCHEMA_DESCRIPTOR,
-            aggregateSchema = AGGREGATE_SCHEMA_DESCRIPTOR
+            paramSchema = ATTRIBUTE_PARAM_SCHEMA_DESCRIPTOR,
+            aggregateSchema = AGGREGATE_SCHEMA_DESCRIPTOR,
+            returnSchema = RETURN_SCHEMA_DESCRIPTOR
     )
-    public static Udaf<Struct, Struct, List<Long>> createUdaf() {
+    public static Udaf<Struct, Map<String, Struct>, List<Struct>> createUdaf() {
         return new AceAttributeUdafImpl();
     }
 
-    private static class AceAttributeUdafImpl implements Udaf<Struct, Struct, List<Long>> {
+    static class AceAttributeUdafImpl implements Udaf<Struct, Map<String, Struct>, List<Struct>> {
+        public static Map<String, Struct> newAggregateValue() {
+            var map = new HashMap<String, Struct>();
+            map.put(AttributeType.STRENGTH.getLabel(), newParamStructWithDefault(AttributeType.STRENGTH));
+            map.put(AttributeType.ENDURANCE.getLabel(), newParamStructWithDefault(AttributeType.ENDURANCE));
+            map.put(AttributeType.QUICKNESS.getLabel(), newParamStructWithDefault(AttributeType.QUICKNESS));
+            map.put(AttributeType.COORDINATION.getLabel(), newParamStructWithDefault(AttributeType.COORDINATION));
+            map.put(AttributeType.FOCUS.getLabel(), newParamStructWithDefault(AttributeType.FOCUS));
+            map.put(AttributeType.SELF.getLabel(), newParamStructWithDefault(AttributeType.SELF));
+            return map;
+        }
 
-        @Override
-        public Struct initialize() {
-            return new Struct(AGGREGATE_SCHEMA);
+        public static Struct newParamStructWithDefault(AttributeTypeValue attributeTypeValue) {
+            return new Struct(ATTRIBUTE_PARAM_SCHEMA)
+                    .put("PROPERTY_TYPE", attributeTypeValue.getValue())
+                    .put("PROPERTY_NAME", attributeTypeValue.getLabel())
+                    .put("CURRENT_LEVEL", 0L);
         }
 
         @Override
-        public Struct aggregate(Struct newValue, Struct aggregateValue) {
-            String attributeName = newValue.getString("ATTRIBUTE_NAME").toUpperCase();
-            long attributeValue = newValue.getInt64("ATTRIBUTE_VALUE");
+        public Map<String, Struct> initialize() {
+            return newAggregateValue();
+        }
 
-            aggregateValue.put(attributeName, attributeValue);
+        @Override
+        public Map<String, Struct> aggregate(Struct newValue, Map<String, Struct> aggregateValue) {
+            newValue.put("PROPERTY_NAME", newValue.getString("PROPERTY_NAME").toUpperCase());
 
+            String attributeName = newValue.getString("PROPERTY_NAME");
+            aggregateValue.put(attributeName, newValue);
             return aggregateValue;
         }
 
         @Override
-        public Struct merge(Struct aggOne, Struct aggTwo) {
+        public Map<String, Struct> merge(Map<String, Struct> aggOne, Map<String, Struct> aggTwo) {
             return aggTwo;
         }
 
         @Override
-        public List<Long> map(Struct intermediate) {
+        public List<Struct> map(Map<String, Struct> intermediate) {
             return List.of(
-                    Optional.ofNullable(intermediate.getInt64("STRENGTH")).orElse(0L),
-                    Optional.ofNullable(intermediate.getInt64("ENDURANCE")).orElse(0L),
-                    Optional.ofNullable(intermediate.getInt64("QUICKNESS")).orElse(0L),
-                    Optional.ofNullable(intermediate.getInt64("COORDINATION")).orElse(0L),
-                    Optional.ofNullable(intermediate.getInt64("FOCUS")).orElse(0L),
-                    Optional.ofNullable(intermediate.getInt64("SELF")).orElse(0L)
+                    intermediate.get(AttributeType.STRENGTH.getLabel()),
+                    intermediate.get(AttributeType.ENDURANCE.getLabel()),
+                    intermediate.get(AttributeType.QUICKNESS.getLabel()),
+                    intermediate.get(AttributeType.COORDINATION.getLabel()),
+                    intermediate.get(AttributeType.FOCUS.getLabel()),
+                    intermediate.get(AttributeType.SELF.getLabel())
             );
         }
     }

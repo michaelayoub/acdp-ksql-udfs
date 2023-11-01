@@ -98,11 +98,12 @@ shadowJar {
     archiveBaseName = "acdp-ksql-udfs"
     archiveClassifier = ""
     destinationDirectory = file("extensions")
-//    dependencies {
-//        include(dependency("org.xerial:sqlite-jdbc:3.43.0.0"))
-//        include(dependency("org.apache.kafka_2.13:3.5.1"))
-//        include(dependency("io.confluent.ksql:ksqldb-udf:7.4.0"))
-//    }
+    dependencies {
+        include(dependency("org.apache.kafka_2.13:3.5.1"))
+        include(dependency("org.apache.kafka:connect-api:3.5.1"))
+        include(dependency("com.google.protobuf:protobuf-java:3.24.4"))
+        include(dependency("io.confluent.ksql:ksqldb-udf:7.4.0"))
+    }
 //    minimize {
 //        exclude(dependency("org.xerial:sqlite-jdbc:3.43.0.0"))
 //    }
