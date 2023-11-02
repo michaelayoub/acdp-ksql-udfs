@@ -5,11 +5,10 @@ import io.ayoub.acdp.model.AcePositionWithName;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertIterableEquals;
 
 class NeighborSearchTest {
     static NeighborSearch neighborSearch;
