@@ -13,7 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertIterableEquals;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class AceSkillUdafTest {
-    private final Udaf<Struct, Map<Integer, Struct>, List<Struct>> udaf = AceSkillUdaf.createUdaf();
+    private final Udaf<Struct, Map<String, Struct>, List<Struct>> udaf = AceSkillUdaf.createUdaf();
 
     @Test
     void savesOneSkill() {
@@ -60,12 +60,14 @@ public class AceSkillUdafTest {
         var ins = List.of(
                 paramStructWithSkill("Shield", 48, 5),
                 paramStructWithSkill("Gearcraft", 42, 5),
+                paramStructWithSkill("MeleeDefense", 6, 10),
                 paramStructWithSkill("Recklessness", 50, 10)
         );
 
         List<Struct> out = aggregateAllParams(ins);
 
         assertIterableEquals(List.of(
+                paramStructWithSkill("MeleeDefense", 6, 10),
                 paramStructWithSkill("Gearcraft", 42, 5),
                 paramStructWithSkill("Shield", 48, 5),
                 paramStructWithSkill("Recklessness", 50, 10)

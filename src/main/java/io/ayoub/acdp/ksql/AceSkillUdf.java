@@ -65,6 +65,7 @@ public class AceSkillUdf implements Configurable {
             .field("INITIAL_LEVEL", Schema.OPTIONAL_INT64_SCHEMA)
             .field("NUM_TIMES_INCREASED", Schema.OPTIONAL_INT32_SCHEMA)
             .field("LEVEL_FROM_ATTRIBUTES", Schema.OPTIONAL_INT32_SCHEMA)
+            .field("CURRENT_LEVEL", Schema.OPTIONAL_INT32_SCHEMA)
             .field("XP_SPENT", Schema.OPTIONAL_INT64_SCHEMA)
             .field("SKILL_ADVANCEMENT_CLASS_TYPE", Schema.OPTIONAL_INT64_SCHEMA)
             .field("SKILL_ADVANCEMENT_CLASS_NAME", Schema.OPTIONAL_STRING_SCHEMA)
@@ -77,6 +78,7 @@ public class AceSkillUdf implements Configurable {
                     "INITIAL_LEVEL BIGINT, " +
                     "NUM_TIMES_INCREASED INTEGER, " +
                     "LEVEL_FROM_ATTRIBUTES INTEGER, " +
+                    "CURRENT_LEVEL INTEGER, " +
                     "XP_SPENT BIGINT, " +
                     "SKILL_ADVANCEMENT_CLASS_TYPE BIGINT, " +
                     "SKILL_ADVANCEMENT_CLASS_NAME VARCHAR(STRING), " +
@@ -102,7 +104,7 @@ public class AceSkillUdf implements Configurable {
 
         int levelFromAttributes;
         if (skill.getAttr2() == 0) { // single attribute skill
-            levelFromAttributes =  (int) Math.round(attr1Value / divisor);
+            levelFromAttributes = (int) Math.round(attr1Value / divisor);
         } else {
             long attr2Value = attributeDetailList.get(skill.getAttr2() - 1).getInt64("CURRENT_LEVEL");
             levelFromAttributes = (int) Math.round((attr1Value + attr2Value) / divisor);
@@ -113,11 +115,15 @@ public class AceSkillUdf implements Configurable {
 
     private static Struct getEnrichedSkill(Struct skillDetails, int levelFromAttributes) {
         var enrichedSkill = new Struct(SKILL_RETURN_SCHEMA);
+        var numTimesIncreased = skillDetails.getInt32("NUM_TIMES_INCREASED");
+        var initialLevel = skillDetails.getInt64("INITIAL_LEVEL").intValue();
+
         enrichedSkill.put("PROPERTY_TYPE", skillDetails.getInt32("PROPERTY_TYPE"));
         enrichedSkill.put("PROPERTY_NAME", skillDetails.getString("PROPERTY_NAME"));
         enrichedSkill.put("INITIAL_LEVEL", skillDetails.getInt64("INITIAL_LEVEL"));
         enrichedSkill.put("NUM_TIMES_INCREASED", skillDetails.getInt32("NUM_TIMES_INCREASED"));
         enrichedSkill.put("LEVEL_FROM_ATTRIBUTES", levelFromAttributes);
+        enrichedSkill.put("CURRENT_LEVEL", levelFromAttributes + numTimesIncreased + initialLevel);
         enrichedSkill.put("XP_SPENT", skillDetails.getInt64("XP_SPENT"));
         enrichedSkill.put("SKILL_ADVANCEMENT_CLASS_TYPE", skillDetails.getInt64("SKILL_ADVANCEMENT_CLASS_TYPE"));
         enrichedSkill.put("SKILL_ADVANCEMENT_CLASS_NAME", skillDetails.getString("SKILL_ADVANCEMENT_CLASS_NAME"));

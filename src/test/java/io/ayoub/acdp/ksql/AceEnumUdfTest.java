@@ -50,4 +50,9 @@ public class AceEnumUdfTest {
         // this enumeration has no extensions
         assertNull(udf.aceEnumExtension("AccessLevel", 1L, 1L));
     }
+
+    @Test
+    void shouldExtendTitle() {
+        assertEquals("Adventurer", udf.aceEnumExtension("PropertyInt", 261, 1));
+    }
 }
